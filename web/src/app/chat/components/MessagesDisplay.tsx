@@ -221,7 +221,7 @@ export const MessagesDisplay: React.FC<MessagesDisplayProps> = ({
         />
       )}
 
-      <div ref={endPaddingRef} className="h-[95px]" />
+      <div ref={endPaddingRef} className="h-[180px] md:h-[95px]" />
       <div ref={endDivRef} />
     </div>
   );

@@ -48,7 +48,10 @@ export default function PageHeader({
   }, []);
 
   return (
-    <div ref={headerRef} className={cn("pt-10 sticky top-0 z-10", className)}>
+    <div
+      ref={headerRef}
+      className={cn("pt-4 md:pt-10 sticky top-0 z-10", className)}
+    >
       <div className="flex flex-col gap-6 px-4 pt-4 pb-2">
         <div className="flex flex-col">
           <div className="flex flex-row justify-between items-center gap-4">
@@ -57,7 +60,7 @@ export default function PageHeader({
           </div>
           <div className="flex flex-col">
             <Text headingH2>{title}</Text>
-            <Text secondaryBody text03>
+            <Text secondaryBody text03 className="text-center md:text-left">
               {description}
             </Text>
           </div>

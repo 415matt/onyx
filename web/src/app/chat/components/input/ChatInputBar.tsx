@@ -24,7 +24,7 @@ import { useProjectsContext } from "@/app/chat/projects/ProjectsContext";
 import { FileCard } from "./FileCard";
 import {
   ProjectFile,
-  UserFileStatus,
+  UserFileStatus, // UCSD Patch
 } from "@/app/chat/projects/projectsService";
 import IconButton from "@/refresh-components/buttons/IconButton";
 import SvgHourglass from "@/icons/hourglass";
@@ -38,6 +38,7 @@ import {
   getIconForAction,
   hasSearchToolsAvailable,
 } from "../../services/actionUtils";
+import { buildPlausibleClasses } from "@/lib/analytics/plausible";
 
 const MAX_INPUT_HEIGHT = 200;
 
@@ -81,6 +82,7 @@ export function SourceChip({
 }
 
 export interface ChatInputBarProps {
+  isMobile?: boolean;
   removeDocs: () => void;
   selectedDocuments: OnyxDocument[];
   message: string;
@@ -107,6 +109,7 @@ export interface ChatInputBarProps {
 }
 
 function ChatInputBarInner({
+  isMobile,
   retrievalEnabled,
   removeDocs,
   toggleDocumentSidebar,
@@ -132,13 +135,23 @@ function ChatInputBarInner({
 }: ChatInputBarProps) {
   const { user } = useUser();
   const { forcedToolIds, setForcedToolIds } = useAgentsContext();
-  const { currentMessageFiles, setCurrentMessageFiles } = useProjectsContext();
+  const {
+    currentMessageFiles,
+    setCurrentMessageFiles,
+    allCurrentProjectFiles,
+  } = useProjectsContext(); // UCSD Patch: added allCurrentProjectFiles
 
-  const currentIndexingFiles = useMemo(() => {
-    return currentMessageFiles.filter(
-      (file) => file.status === UserFileStatus.PROCESSING
+  // UCSD Patch
+  const hasFilesProcessing = useMemo(() => {
+    const isProcessing = (file: ProjectFile) =>
+      file.status === UserFileStatus.UPLOADING ||
+      file.status === UserFileStatus.PROCESSING;
+    return (
+      currentMessageFiles.some(isProcessing) ||
+      allCurrentProjectFiles.some(isProcessing)
     );
-  }, [currentMessageFiles]);
+  }, [currentMessageFiles, allCurrentProjectFiles]);
+  // End UCSD Patch
 
   // Convert ProjectFile to MinimalOnyxDocument format for viewing
   const handleFileClick = useCallback(
@@ -276,26 +289,6 @@ function ChatInputBarInner({
     [inputPrompts, startFilterSlash]
   );
 
-  // Determine if we should hide processing state based on context limits
-  const hideProcessingState = useMemo(() => {
-    if (currentMessageFiles.length > 0 && currentIndexingFiles.length > 0) {
-      const currentFilesTokenTotal = currentMessageFiles.reduce(
-        (acc, file) => acc + (file.token_count || 0),
-        0
-      );
-      const totalTokens =
-        (currentSessionFileTokenCount || 0) + currentFilesTokenTotal;
-      // Hide processing state when files are within context limits
-      return totalTokens < availableContextTokens;
-    }
-    return false;
-  }, [
-    currentMessageFiles,
-    currentSessionFileTokenCount,
-    currentIndexingFiles,
-    availableContextTokens,
-  ]);
-
   // Detect if there are any non-image files to determine if images should be compact
   const shouldCompactImages = useMemo(() => {
     return hasNonImageFiles(currentMessageFiles);
@@ -354,7 +347,7 @@ function ChatInputBarInner({
     <div
       id="onyx-chat-input"
       className={cn(
-        "max-w-full w-[50rem]",
+        "w-full max-w-[50rem] relative" /* UCSD Patch */,
         disabled && "opacity-50 cursor-not-allowed pointer-events-none"
       )}
       aria-disabled={disabled}
@@ -409,7 +402,6 @@ function ChatInputBarInner({
                 key={file.id}
                 file={file}
                 removeFile={handleRemoveMessageFile}
-                hideProcessingState={hideProcessingState}
                 onFileClick={handleFileClick}
                 compactImages={shouldCompactImages}
               />
@@ -563,9 +555,14 @@ function ChatInputBarInner({
                 onClick={toggleDeepResearch}
                 engaged={deepResearchEnabled}
                 action
-                folded
+                folded={isMobile}
                 disabled={disabled}
-                className={disabled ? "bg-transparent" : ""}
+                className={cn(
+                  disabled ? "bg-transparent" : "",
+                  buildPlausibleClasses("Deep+Research+Toggled", {
+                    action: deepResearchEnabled ? "disabled" : "enabled",
+                  })
+                )}
               >
                 Deep Research
               </SelectButton>
@@ -591,6 +588,7 @@ function ChatInputBarInner({
                     engaged
                     action
                     disabled={disabled}
+                    folded={isMobile}
                     className={disabled ? "bg-transparent" : ""}
                   >
                     {tool.display_name}
@@ -605,12 +603,15 @@ function ChatInputBarInner({
                 llmManager={llmManager}
                 requiresImageGeneration={false}
                 disabled={disabled}
+                folded={isMobile}
               />
             </div>
             <IconButton
               id="onyx-chat-input-send-button"
               icon={chatState === "input" ? SvgArrowUp : SvgStop}
-              disabled={chatState === "input" && !message}
+              disabled={
+                chatState === "input" && (!message || hasFilesProcessing)
+              } /* UCSD Patch */
               onClick={() => {
                 if (chatState == "streaming") {
                   stopGenerating();

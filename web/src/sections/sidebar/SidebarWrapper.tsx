@@ -7,9 +7,10 @@ import Logo from "@/refresh-components/Logo";
 interface LogoSectionProps {
   folded?: boolean;
   setFolded?: Dispatch<SetStateAction<boolean>>;
+  onClose?: () => void;
 }
 
-function LogoSection({ folded, setFolded }: LogoSectionProps) {
+function LogoSection({ folded, setFolded, onClose }: LogoSectionProps) {
   const logo = useCallback(
     (className?: string) => <Logo folded={folded} className={className} />,
     [folded]
@@ -19,11 +20,19 @@ function LogoSection({ folded, setFolded }: LogoSectionProps) {
       <IconButton
         icon={SvgSidebar}
         tertiary
-        tooltip="Close Sidebar"
-        onClick={() => setFolded?.(shouldFold)}
+        tooltip={
+          onClose ? undefined : shouldFold ? "Close Sidebar" : "Open Sidebar"
+        }
+        onClick={() => {
+          if (onClose) {
+            onClose();
+          } else {
+            setFolded?.(shouldFold);
+          }
+        }}
       />
     ),
-    [setFolded]
+    [setFolded, onClose]
   );
 
   return (
@@ -62,12 +71,16 @@ export interface SidebarWrapperProps {
   folded?: boolean;
   setFolded?: Dispatch<SetStateAction<boolean>>;
   children?: React.ReactNode;
+  className?: string; // Add className prop
+  onClose?: () => void; // Callback for closing on mobile
 }
 
 export default function SidebarWrapper({
   folded,
   setFolded,
   children,
+  className,
+  onClose,
 }: SidebarWrapperProps) {
   return (
     // This extra `div` wrapping needs to be present (for some reason).
@@ -80,10 +93,11 @@ export default function SidebarWrapper({
           // @HERE (size of sidebar)
           //
           // - @raunakab
-          folded ? "w-[3.25rem]" : "w-[15rem]"
+          folded ? "w-[3.25rem]" : "w-[15rem]",
+          className // Merge className
         )}
       >
-        <LogoSection folded={folded} setFolded={setFolded} />
+        <LogoSection folded={folded} setFolded={setFolded} onClose={onClose} />
         {children}
       </div>
     </div>

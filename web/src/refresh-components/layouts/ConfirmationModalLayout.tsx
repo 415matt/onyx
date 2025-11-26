@@ -35,7 +35,7 @@ export default function ConfirmationModalLayout({
           children
         )}
       </div>
-      <div className="flex flex-row w-full items-center justify-end p-4 gap-2">
+      <div className="flex flex-row w-full items-center justify-end p-4 gap-2 pb-[calc(1rem+env(safe-area-inset-bottom))]">
         {!hideCancel && (
           <Button secondary onClick={onClose} type="button">
             Cancel

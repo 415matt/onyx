@@ -410,6 +410,11 @@ export default function AgentsPage() {
     }
   }, [selectedActionIds, selectedMcpServerIds, uniqueActions]);
 
+  const SHOW_NEW_AGENTS = false;
+  const SHOW_AGENTS_TOGGLE = false;
+  const SHOW_CREATOR_FILTER = false;
+  const SHOW_ACTIONS_FILTER = false;
+
   return (
     <PageLayout data-testid="AgentsPage/container" aria-label="Agents Page">
       <PageHeader
@@ -418,11 +423,13 @@ export default function AgentsPage() {
         description="Customize AI behavior and knowledge for you and your team’s use cases."
         className="bg-background-tint-01"
         rightChildren={
-          <div data-testid="AgentsPage/new-agent-button">
-            <Button href="/assistants/new" leftIcon={SvgPlus}>
-              New Agent
-            </Button>
-          </div>
+          SHOW_NEW_AGENTS && (
+            <div data-testid="AgentsPage/new-agent-button">
+              <Button href="/assistants/new" leftIcon={SvgPlus}>
+                New Agent
+              </Button>
+            </div>
+          )
         }
       >
         <div className="flex flex-col gap-2">
@@ -434,199 +441,206 @@ export default function AgentsPage() {
               onChange={(event) => setSearchQuery(event.target.value)}
               leftSearchIcon
             />
-            <Tabs
-              value={activeTab}
-              onValueChange={(value) => setActiveTab(value as "all" | "your")}
-            >
-              <TabsList>
-                <TabsTrigger value="all">All Agents</TabsTrigger>
-                <TabsTrigger value="your">Your Agents</TabsTrigger>
-              </TabsList>
-            </Tabs>
+            {SHOW_AGENTS_TOGGLE && (
+              <Tabs
+                value={activeTab}
+                onValueChange={(value) => setActiveTab(value as "all" | "your")}
+              >
+                <TabsList>
+                  <TabsTrigger value="all">All Agents</TabsTrigger>
+                  <TabsTrigger value="your">Your Agents</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            )}
           </div>
           <div className="flex flex-row gap-2">
-            <Popover
-              open={creatorFilterOpen}
-              onOpenChange={setCreatorFilterOpen}
-            >
-              <PopoverTrigger asChild>
-                <FilterButton
-                  leftIcon={SvgUser}
-                  active={selectedCreatorIds.size > 0}
-                  transient={creatorFilterOpen}
-                  onClear={() => setSelectedCreatorIds(new Set())}
-                >
-                  {creatorFilterButtonText}
-                </FilterButton>
-              </PopoverTrigger>
-              <PopoverContent align="start">
-                <PopoverMenu medium>
-                  {[
-                    <InputTypeIn
-                      key="created-by"
-                      placeholder="Created by..."
-                      internal
-                      leftSearchIcon
-                      value={creatorSearchQuery}
-                      onChange={(e) => setCreatorSearchQuery(e.target.value)}
-                    />,
-                    ...filteredCreators.flatMap((creator, index) => {
-                      const isSelected = selectedCreatorIds.has(creator.id);
-                      const isCurrentUser = user && creator.id === user.id;
-
-                      // Check if we need to add a separator after this item
-                      const nextCreator = filteredCreators[index + 1];
-                      const nextIsCurrentUser =
-                        user && nextCreator && nextCreator.id === user.id;
-                      const needsSeparator =
-                        isCurrentUser && nextCreator && !nextIsCurrentUser;
-
-                      // Determine icon: Check if selected, User icon if current user, otherwise no icon
-                      const icon = isCurrentUser
-                        ? SvgUser
-                        : isSelected
-                          ? SvgCheck
-                          : () => null;
-
-                      const lineItem = (
-                        <LineItem
-                          key={creator.id}
-                          icon={icon}
-                          heavyForced={isSelected}
-                          onClick={() => {
-                            setSelectedCreatorIds((prev) => {
-                              const newSet = new Set(prev);
-                              if (newSet.has(creator.id)) {
-                                newSet.delete(creator.id);
-                              } else {
-                                newSet.add(creator.id);
-                              }
-                              return newSet;
-                            });
-                          }}
-                        >
-                          {creator.email}
-                        </LineItem>
-                      );
-
-                      // Return the line item, and optionally a separator
-                      return needsSeparator ? [lineItem, null] : [lineItem];
-                    }),
-                  ]}
-                </PopoverMenu>
-              </PopoverContent>
-            </Popover>
-            <Popover
-              open={actionsFilterOpen}
-              onOpenChange={setActionsFilterOpen}
-            >
-              <PopoverTrigger asChild>
-                <FilterButton
-                  leftIcon={SvgActions}
-                  transient={actionsFilterOpen}
-                  active={
-                    selectedActionIds.size > 0 || selectedMcpServerIds.size > 0
-                  }
-                  onClear={() => {
-                    setSelectedActionIds(new Set());
-                    setSelectedMcpServerIds(new Set());
-                  }}
-                >
-                  {actionsFilterButtonText}
-                </FilterButton>
-              </PopoverTrigger>
-              <PopoverContent align="start">
-                <PopoverMenu medium>
-                  {[
-                    <InputTypeIn
-                      key="actions"
-                      placeholder="Filter actions..."
-                      internal
-                      leftSearchIcon
-                      value={actionsSearchQuery}
-                      onChange={(e) => setActionsSearchQuery(e.target.value)}
-                    />,
-                    ...filteredActions.flatMap((action, index) => {
-                      if (action.type === "tool") {
-                        const isSelected = selectedActionIds.has(action.id);
-                        const systemIcon = SYSTEM_TOOL_ICONS[action.name];
-                        const isSystemTool = !!systemIcon;
+            {SHOW_CREATOR_FILTER && (
+              <Popover
+                open={creatorFilterOpen}
+                onOpenChange={setCreatorFilterOpen}
+              >
+                <PopoverTrigger asChild>
+                  <FilterButton
+                    leftIcon={SvgUser}
+                    active={selectedCreatorIds.size > 0}
+                    transient={creatorFilterOpen}
+                    onClear={() => setSelectedCreatorIds(new Set())}
+                  >
+                    {creatorFilterButtonText}
+                  </FilterButton>
+                </PopoverTrigger>
+                <PopoverContent align="start">
+                  <PopoverMenu medium>
+                    {[
+                      <InputTypeIn
+                        key="created-by"
+                        placeholder="Created by..."
+                        internal
+                        leftSearchIcon
+                        value={creatorSearchQuery}
+                        onChange={(e) => setCreatorSearchQuery(e.target.value)}
+                      />,
+                      ...filteredCreators.flatMap((creator, index) => {
+                        const isSelected = selectedCreatorIds.has(creator.id);
+                        const isCurrentUser = user && creator.id === user.id;
 
                         // Check if we need to add a separator after this item
-                        const nextAction = filteredActions[index + 1];
-                        const nextIsSystemTool =
-                          nextAction && nextAction.type === "tool"
-                            ? !!SYSTEM_TOOL_ICONS[nextAction.name]
-                            : false;
+                        const nextCreator = filteredCreators[index + 1];
+                        const nextIsCurrentUser =
+                          user && nextCreator && nextCreator.id === user.id;
                         const needsSeparator =
-                          isSystemTool && nextAction && !nextIsSystemTool;
+                          isCurrentUser && nextCreator && !nextIsCurrentUser;
 
-                        // Determine icon: system icon if available, otherwise Actions icon
-                        const icon = systemIcon ? systemIcon : SvgActions;
+                        // Determine icon: Check if selected, User icon if current user, otherwise no icon
+                        const icon = isCurrentUser
+                          ? SvgUser
+                          : isSelected
+                            ? SvgCheck
+                            : () => null;
 
                         const lineItem = (
                           <LineItem
-                            key={action.id}
+                            key={creator.id}
                             icon={icon}
                             heavyForced={isSelected}
                             onClick={() => {
-                              setSelectedActionIds((prev) => {
+                              setSelectedCreatorIds((prev) => {
                                 const newSet = new Set(prev);
-                                if (newSet.has(action.id)) {
-                                  newSet.delete(action.id);
+                                if (newSet.has(creator.id)) {
+                                  newSet.delete(creator.id);
                                 } else {
-                                  newSet.add(action.id);
+                                  newSet.add(creator.id);
                                 }
                                 return newSet;
                               });
                             }}
                           >
-                            {action.display_name}
+                            {creator.email}
                           </LineItem>
                         );
 
+                        // Return the line item, and optionally a separator
                         return needsSeparator ? [lineItem, null] : [lineItem];
-                      } else {
-                        // MCP Group - render only the server name, not individual tools
-                        const groupKey = `mcp-group-${action.mcp_server_id}`;
-                        const isSelected = selectedMcpServerIds.has(
-                          action.mcp_server_id
-                        );
+                      }),
+                    ]}
+                  </PopoverMenu>
+                </PopoverContent>
+              </Popover>
+            )}
+            {SHOW_ACTIONS_FILTER && (
+              <Popover
+                open={actionsFilterOpen}
+                onOpenChange={setActionsFilterOpen}
+              >
+                <PopoverTrigger asChild>
+                  <FilterButton
+                    leftIcon={SvgActions}
+                    transient={actionsFilterOpen}
+                    active={
+                      selectedActionIds.size > 0 ||
+                      selectedMcpServerIds.size > 0
+                    }
+                    onClear={() => {
+                      setSelectedActionIds(new Set());
+                      setSelectedMcpServerIds(new Set());
+                    }}
+                  >
+                    {actionsFilterButtonText}
+                  </FilterButton>
+                </PopoverTrigger>
+                <PopoverContent align="start">
+                  <PopoverMenu medium>
+                    {[
+                      <InputTypeIn
+                        key="actions"
+                        placeholder="Filter actions..."
+                        internal
+                        leftSearchIcon
+                        value={actionsSearchQuery}
+                        onChange={(e) => setActionsSearchQuery(e.target.value)}
+                      />,
+                      ...filteredActions.flatMap((action, index) => {
+                        if (action.type === "tool") {
+                          const isSelected = selectedActionIds.has(action.id);
+                          const systemIcon = SYSTEM_TOOL_ICONS[action.name];
+                          const isSystemTool = !!systemIcon;
 
-                        const lineItem = (
-                          <LineItem
-                            key={groupKey}
-                            icon={SvgActions}
-                            heavyForced={isSelected}
-                            onClick={() => {
-                              setSelectedMcpServerIds((prev) => {
-                                const newSet = new Set(prev);
-                                if (newSet.has(action.mcp_server_id)) {
-                                  newSet.delete(action.mcp_server_id);
-                                } else {
-                                  newSet.add(action.mcp_server_id);
-                                }
-                                return newSet;
-                              });
-                            }}
-                          >
-                            {action.server_name}
-                          </LineItem>
-                        );
+                          // Check if we need to add a separator after this item
+                          const nextAction = filteredActions[index + 1];
+                          const nextIsSystemTool =
+                            nextAction && nextAction.type === "tool"
+                              ? !!SYSTEM_TOOL_ICONS[nextAction.name]
+                              : false;
+                          const needsSeparator =
+                            isSystemTool && nextAction && !nextIsSystemTool;
 
-                        return [lineItem];
-                      }
-                    }),
-                  ]}
-                </PopoverMenu>
-              </PopoverContent>
-            </Popover>
+                          // Determine icon: system icon if available, otherwise Actions icon
+                          const icon = systemIcon ? systemIcon : SvgActions;
+
+                          const lineItem = (
+                            <LineItem
+                              key={action.id}
+                              icon={icon}
+                              heavyForced={isSelected}
+                              onClick={() => {
+                                setSelectedActionIds((prev) => {
+                                  const newSet = new Set(prev);
+                                  if (newSet.has(action.id)) {
+                                    newSet.delete(action.id);
+                                  } else {
+                                    newSet.add(action.id);
+                                  }
+                                  return newSet;
+                                });
+                              }}
+                            >
+                              {action.display_name}
+                            </LineItem>
+                          );
+
+                          return needsSeparator ? [lineItem, null] : [lineItem];
+                        } else {
+                          // MCP Group - render only the server name, not individual tools
+                          const groupKey = `mcp-group-${action.mcp_server_id}`;
+                          const isSelected = selectedMcpServerIds.has(
+                            action.mcp_server_id
+                          );
+
+                          const lineItem = (
+                            <LineItem
+                              key={groupKey}
+                              icon={SvgActions}
+                              heavyForced={isSelected}
+                              onClick={() => {
+                                setSelectedMcpServerIds((prev) => {
+                                  const newSet = new Set(prev);
+                                  if (newSet.has(action.mcp_server_id)) {
+                                    newSet.delete(action.mcp_server_id);
+                                  } else {
+                                    newSet.add(action.mcp_server_id);
+                                  }
+                                  return newSet;
+                                });
+                              }}
+                            >
+                              {action.server_name}
+                            </LineItem>
+                          );
+
+                          return [lineItem];
+                        }
+                      }),
+                    ]}
+                  </PopoverMenu>
+                </PopoverContent>
+              </Popover>
+            )}
           </div>
         </div>
       </PageHeader>
 
       {/* Agents List */}
-      <div className="p-4 flex flex-col gap-8">
+      <div className="p-4 flex flex-col gap-8 pb-[calc(1rem+env(safe-area-inset-bottom))]">
         {agentCount === 0 ? (
           <Text
             className="w-full h-full flex flex-col items-center justify-center py-12"

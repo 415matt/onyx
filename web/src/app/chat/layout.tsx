@@ -60,8 +60,12 @@ export default async function Layout({ children }: LayoutProps) {
     >
       <ProjectsProvider initialProjects={projects}>
         <div className="flex flex-row w-full h-full">
-          <AppSidebar />
-          <AppLayout>{children}</AppLayout>
+          <div className="hidden md:flex h-full">
+            <AppSidebar />
+          </div>
+          <div className="flex flex-col w-full h-full min-w-0">
+            <AppLayout>{children}</AppLayout>
+          </div>
         </div>
       </ProjectsProvider>
     </ChatProvider>

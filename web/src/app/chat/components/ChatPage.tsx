@@ -77,6 +77,10 @@ import { Suggestions } from "@/sections/Suggestions";
 import OnboardingFlow from "@/refresh-components/onboarding/OnboardingFlow";
 import { useOnboardingState } from "@/refresh-components/onboarding/useOnboardingState";
 import { OnboardingStep } from "@/refresh-components/onboarding/types";
+import {
+  isCustomAssistant,
+  withCustomAssistantIntro,
+} from "@/app/chat/tritongpt/customAssistantUtils";
 
 const DEFAULT_CONTEXT_TOKENS = 120_000;
 interface ChatPageProps {
@@ -290,28 +294,29 @@ export default function ChatPage({
 
   function handleInputResize() {
     setTimeout(() => {
-      if (
-        inputRef.current &&
-        lastMessageRef.current &&
-        !waitForScrollRef.current
-      ) {
+      if (inputRef.current && !waitForScrollRef.current) {
         const newHeight: number =
           inputRef.current?.getBoundingClientRect().height!;
-        const heightDifference = newHeight - previousHeight.current;
+        const heightDifference = newHeight - (previousHeight.current || 0);
+
+        // Only adjust padding if there's an actual height change
         if (
-          previousHeight.current &&
-          heightDifference != 0 &&
           endPaddingRef.current &&
           scrollableDivRef &&
-          scrollableDivRef.current
+          scrollableDivRef.current &&
+          heightDifference != 0 &&
+          previousHeight.current // Don't run on first render
         ) {
+          const isMobile = window.innerWidth < 768;
+          const minPadding = isMobile ? 180 : 95;
+
           endPaddingRef.current.style.transition = "height 0.3s ease-out";
           endPaddingRef.current.style.height = `${Math.max(
             newHeight - 50,
-            0
+            minPadding
           )}px`;
 
-          if (autoScrollEnabled) {
+          if (autoScrollEnabled && lastMessageRef.current) {
             scrollableDivRef?.current.scrollBy({
               left: 0,
               top: Math.max(heightDifference, 0),
@@ -327,9 +332,12 @@ export default function ChatPage({
   const resetInputBar = useCallback(() => {
     setMessage("");
     setCurrentMessageFiles([]);
+    // Remove inline style to let CSS classes handle the height
     if (endPaddingRef.current) {
-      endPaddingRef.current.style.height = `95px`;
+      endPaddingRef.current.style.height = "";
     }
+    // Reset previousHeight so handleInputResize can track changes properly
+    previousHeight.current = 0;
   }, [setMessage, setCurrentMessageFiles]);
 
   const debounceNumber = 100; // time for debouncing
@@ -629,9 +637,26 @@ export default function ChatPage({
     !loadingError &&
     !submittedMessage;
 
+  // UCSD Custom Assistants - Inject synthetic intro message when no messages exist
+  const messageHistoryWithIntro = useMemo(
+    () =>
+      withCustomAssistantIntro(
+        messageHistory,
+        liveAssistant,
+        enterpriseSettings,
+        isFetchingChatMessages
+      ),
+    [messageHistory, liveAssistant, enterpriseSettings, isFetchingChatMessages]
+  );
+
+  // UCSD Custom Assistants - Check if current assistant is a custom one
+  const isCurrentAssistantCustom = isCustomAssistant(liveAssistant);
+
   // Only show the centered hero layout when there is NO project selected
   // and there are no messages yet. If a project is selected, prefer a top layout.
-  const showCenteredHero = currentProjectId === null && showCenteredInput;
+  // Also disable centered layout for custom assistants (they show intro in messages area)
+  const showCenteredHero =
+    currentProjectId === null && showCenteredInput && !isCurrentAssistantCustom;
 
   useEffect(() => {
     if (currentProjectId !== null && showCenteredInput) {
@@ -708,6 +733,38 @@ export default function ChatPage({
       cancelled = true;
     };
   }, [existingChatSessionId, selectedAssistant?.id, liveAssistant?.id]);
+
+  useEffect(() => {
+    const handleClick = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+
+      // Check if the clicked element is an rq-link
+      if (target.classList.contains("rq-link")) {
+        event.preventDefault(); // Prevent default link behavior
+
+        const linkMessage = target.textContent?.trim();
+        if (linkMessage) {
+          setMessage(linkMessage); // Populate the input bar
+
+          // Optionally submit the message
+          onSubmit({
+            // queryOverride: linkMessage,
+            message: linkMessage,
+            currentMessageFiles,
+            useAgentSearch: deepResearchEnabled,
+          });
+        }
+      }
+    };
+
+    // Attach the click event listener
+    document.addEventListener("click", handleClick);
+
+    // Cleanup listener on component unmount
+    return () => {
+      document.removeEventListener("click", handleClick);
+    };
+  }, [setMessage, onSubmit]); // Include dependencies
 
   // handle error case where no assistants are available
   if (noAssistants) {
@@ -797,11 +854,11 @@ export default function ChatPage({
                 >
                   <div
                     onScroll={handleScroll}
-                    className="w-full h-[calc(100dvh-100px)] flex flex-col default-scrollbar overflow-y-auto overflow-x-hidden relative"
+                    className="w-full h-full flex flex-col default-scrollbar overflow-y-auto overflow-x-hidden relative" // UCSD Patch
                     ref={scrollableDivRef}
                   >
                     <MessagesDisplay
-                      messageHistory={messageHistory}
+                      messageHistory={messageHistoryWithIntro}
                       completeMessageTree={completeMessageTree}
                       liveAssistant={liveAssistant}
                       llmManager={llmManager}
@@ -849,10 +906,10 @@ export default function ChatPage({
 
                     <div
                       className={cn(
-                        "pointer-events-auto w-[95%] mx-auto relative text-text-04 justify-center",
+                        "pointer-events-auto w-full max-w-[50rem] mx-auto relative text-text-04 justify-center",
                         showCenteredHero
-                          ? "h-full grid grid-rows-[1fr_auto_1fr]"
-                          : "mb-8"
+                          ? "h-full grid grid-cols-1 grid-rows-[1fr_auto_1fr]"
+                          : "mb-2 md:mb-8 pb-[env(safe-area-inset-bottom)]"
                       )}
                     >
                       {currentProjectId == null && showCenteredInput && (
@@ -860,7 +917,7 @@ export default function ChatPage({
                       )}
                       <div
                         className={cn(
-                          "flex flex-col items-center justify-center",
+                          "w-full flex flex-col items-center justify-center",
                           showCenteredHero && "row-start-2"
                         )}
                       >
@@ -886,6 +943,7 @@ export default function ChatPage({
                             />
                           )}
                         <ChatInputBar
+                          isMobile={settings?.isMobile}
                           deepResearchEnabled={deepResearchEnabled}
                           toggleDeepResearch={toggleDeepResearch}
                           toggleDocumentSidebar={toggleDocumentSidebar}
@@ -927,8 +985,13 @@ export default function ChatPage({
                         liveAssistant.starter_messages.length > 0 &&
                         messageHistory.length === 0 &&
                         showCenteredHero && (
-                          <div className="mt-6 row-start-3 max-w-[50rem]">
-                            <Suggestions onSubmit={onSubmit} />
+                          <div className="mt-6 row-start-3 w-full max-w-[50rem]">
+                            {/* # UCSD Patch */}
+                            <Suggestions
+                              onSubmit={onSubmit}
+                              agent={liveAssistant}
+                            />
+                            {/* # End UCSD Patch */}
                           </div>
                         )}
                     </div>

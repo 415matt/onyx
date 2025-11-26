@@ -8,11 +8,11 @@ import { useModalClose } from "@/refresh-components/contexts/ModalContext";
 import RawModal from "@/refresh-components/RawModal";
 
 const sizeClassNames = {
-  main: ["w-[80dvw]", "h-[80dvh]"],
-  medium: ["w-[60rem]", "h-fit"],
-  small: ["w-[32rem]", "h-[30rem]"],
-  tall: ["w-[32rem]"],
-  mini: ["w-[32rem]", "h-fit"],
+  main: ["w-[90vw] md:w-[80dvw]", "h-[80dvh]"],
+  medium: ["w-[90vw] md:w-[60rem]", "h-fit"],
+  small: ["w-[90vw] md:w-[32rem]", "h-[30rem]"],
+  tall: ["w-[90vw] md:w-[32rem]"],
+  mini: ["w-[90vw] md:w-[32rem]", "h-fit", "max-h-[90dvh]"],
 } as const;
 
 export interface ModalProps {
@@ -62,7 +62,9 @@ export default function DefaultModalLayout({
 
   return (
     <RawModal onClose={onClose}>
-      <div className={cn(sizeClassNames[variant], className)}>
+      <div
+        className={cn(sizeClassNames[variant], "overflow-y-auto", className)}
+      >
         <div className="flex flex-col gap-2 p-4">
           <div className="flex flex-row items-center justify-between">
             <Icon className="w-[1.5rem] h-[1.5rem] stroke-text-04" />

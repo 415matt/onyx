@@ -33,6 +33,7 @@ import AccessRestrictedPage from "@/components/errorPages/AccessRestrictedPage";
 import { fetchAssistantData } from "@/lib/chat/fetchAssistantdata";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { fetchAppSidebarMetadata } from "@/lib/appSidebarSS";
+import CaliperClientWrapper from "@/caliper/CaliperClientWrapper";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -95,7 +96,7 @@ export default async function RootLayout({
       <head>
         <meta
           name="viewport"
-          content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, interactive-widget=resizes-content"
+          content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, interactive-widget=resizes-content, viewport-fit=cover"
         />
         {CUSTOM_ANALYTICS_ENABLED &&
           combinedSettings?.customAnalyticsScript && (
@@ -162,7 +163,8 @@ export default async function RootLayout({
       <Suspense fallback={null}>
         <PostHogPageView />
       </Suspense>
-      <div id={MODAL_ROOT_ID} className="h-screen w-screen">
+      <CaliperClientWrapper />
+      <div id={MODAL_ROOT_ID} className="h-dvh w-screen">
         {children}
       </div>
       {process.env.NEXT_PUBLIC_POSTHOG_KEY && <WebVitals />}

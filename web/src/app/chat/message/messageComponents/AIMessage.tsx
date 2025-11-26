@@ -34,6 +34,7 @@ import IconButton from "@/refresh-components/buttons/IconButton";
 import CopyIconButton from "@/refresh-components/buttons/CopyIconButton";
 import SvgThumbsUp from "@/icons/thumbs-up";
 import SvgThumbsDown from "@/icons/thumbs-down";
+import SvgRefreshCw from "@/icons/refresh-cw";
 import LLMPopover from "@/refresh-components/popovers/LLMPopover";
 import { parseLlmDescriptor } from "@/lib/llm/utils";
 import { LlmManager } from "@/lib/hooks";
@@ -43,6 +44,11 @@ import FeedbackModal, {
 } from "../../components/modal/FeedbackModal";
 import { usePopup } from "@/components/admin/connectors/Popup";
 import { useFeedbackController } from "../../hooks/useFeedbackController";
+import {
+  trackPlausibleEvent,
+  sanitizeForPlausible,
+} from "@/lib/analytics/plausible";
+import { cn } from "@/lib/utils"; /* UCSD Patch */
 
 export interface AIMessageProps {
   rawPackets: Packet[];
@@ -98,10 +104,16 @@ export default function AIMessage({
         return;
       }
 
-      // Toggle logic
-      if (currentFeedback === clickedFeedback) {
+      const isRemoving = currentFeedback === clickedFeedback;
+
+      trackPlausibleEvent("Message Feedback", {
+        feedback_type: clickedFeedback,
+        action: isRemoving ? "removed" : "added",
+        message_id: messageId,
+      });
+      if (isRemoving) {
         // Clicking same button - remove feedback
-        await handleFeedbackChange(nodeId, null);
+        await handleFeedbackChange(messageId, null);
       }
 
       // Clicking like (will automatically clear dislike if it was active).
@@ -113,12 +125,12 @@ export default function AIMessage({
           // Open modal for positive feedback
           setFeedbackModalProps({
             feedbackType: "like",
-            messageId: nodeId,
+            messageId,
           });
           modal.toggle(true);
         } else {
           // No modal needed - just submit like (this replaces any existing feedback)
-          await handleFeedbackChange(nodeId, "like");
+          await handleFeedbackChange(messageId, "like");
         }
       }
 
@@ -379,11 +391,11 @@ export default function AIMessage({
       >
         <div className="mx-auto w-[90%] max-w-message-max">
           <div className="lg:mr-12 mobile:ml-0 md:ml-8">
-            <div className="flex items-start">
+            <div className="flex items-start gap-2 md:gap-3">
               <AgentIcon agent={chatState.assistant} />
               <div className="w-full">
                 <div className="max-w-message-max break-words">
-                  <div className="w-full desktop:ml-4">
+                  <div className="w-full">
                     <div className="max-w-message-max break-words">
                       <div
                         ref={markdownRef}
@@ -513,6 +525,11 @@ export default function AIMessage({
                               onClick={() => handleFeedbackClick("like")}
                               tertiary
                               transient={isFeedbackTransient("like")}
+                              /* UCSD Patch: Subtle green tint when like is active */
+                              className={cn(
+                                currentFeedback === "like" &&
+                                  "bg-[color:var(--status-success-01)]"
+                              )}
                               tooltip={
                                 currentFeedback === "like"
                                   ? "Remove Like"
@@ -525,6 +542,11 @@ export default function AIMessage({
                               onClick={() => handleFeedbackClick("dislike")}
                               tertiary
                               transient={isFeedbackTransient("dislike")}
+                              /* UCSD Patch: Subtle red tint when dislike is active */
+                              className={cn(
+                                currentFeedback === "dislike" &&
+                                  "bg-[color:var(--action-danger-01)]"
+                              )}
                               tooltip={
                                 currentFeedback === "dislike"
                                   ? "Remove Dislike"
@@ -544,6 +566,13 @@ export default function AIMessage({
                                     chatState.regenerate!(llmDescriptor);
                                   }}
                                   folded
+                                  icon={({ size = 16, className }) => (
+                                    <SvgRefreshCw
+                                      width={size}
+                                      height={size}
+                                      className={className}
+                                    />
+                                  )}
                                 />
                               </div>
                             )}

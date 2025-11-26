@@ -122,8 +122,9 @@ export default function ShareChatSessionModal({
               view the message history using the following link:
             </Text>
 
-            <div className={cn("flex mt-2")}>
-              {/* <CopyButton content={shareLink} /> */}
+            <div
+              className={cn("flex flex-col md:flex-row mt-2 gap-2 md:gap-0")}
+            >
               <IconButton
                 icon={SvgCopy}
                 onClick={() => copyAll(shareLink)}
@@ -133,7 +134,7 @@ export default function ShareChatSessionModal({
                 href={shareLink}
                 target="_blank"
                 className={cn(
-                  "underline mt-1 ml-1 text-sm my-auto",
+                  "underline text-sm my-auto break-all md:ml-1 md:mt-1",
                   "text-action-link-05"
                 )}
                 rel="noreferrer"

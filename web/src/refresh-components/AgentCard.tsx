@@ -23,6 +23,10 @@ import { checkUserOwnsAssistant } from "@/lib/assistants/utils";
 import { useUser } from "@/components/user/UserProvider";
 import SvgBarChart from "@/icons/bar-chart";
 import SvgPinned from "@/icons/pinned";
+import {
+  buildPlausibleClasses,
+  sanitizeForPlausible,
+} from "@/lib/analytics/plausible";
 
 interface IconLabelProps {
   icon: React.FunctionComponent<SvgProps>;
@@ -64,7 +68,14 @@ export default function AgentCard({ agent }: AgentCardProps) {
       onMouseLeave={() => setHovered(false)}
     >
       <div
-        className="flex flex-col w-full text-left cursor-pointer"
+        className={cn(
+          "flex flex-col w-full text-left cursor-pointer",
+          buildPlausibleClasses("Assistant+Selected", {
+            assistant_id: agent.id,
+            assistant_name: sanitizeForPlausible(agent.name),
+            method: "card_click",
+          })
+        )}
         onClick={() => route({ agentId: agent.id })}
       >
         {/* Main Body */}
@@ -87,7 +98,7 @@ export default function AgentCard({ agent }: AgentCardProps) {
                     router.push(`/assistants/stats/${agent.id}`)
                   )}
                   tooltip="View Agent Stats"
-                  className="hidden group-hover/AgentCard:flex"
+                  className="flex md:hidden md:group-hover/AgentCard:flex"
                 />
               )}
               {isOwnedByUser && (
@@ -98,7 +109,7 @@ export default function AgentCard({ agent }: AgentCardProps) {
                     router.push(`/assistants/edit/${agent.id}`)
                   )}
                   tooltip="Edit Agent"
-                  className="hidden group-hover/AgentCard:flex"
+                  className="flex md:hidden md:group-hover/AgentCard:flex"
                 />
               )}
               <IconButton
@@ -107,7 +118,9 @@ export default function AgentCard({ agent }: AgentCardProps) {
                 onClick={noProp(() => togglePinnedAgent(agent, !pinned))}
                 tooltip={pinned ? "Unpin from Sidebar" : "Pin to Sidebar"}
                 transient={hovered && pinned}
-                className={cn(!pinned && "hidden group-hover/AgentCard:flex")}
+                className={cn(
+                  !pinned && "flex md:hidden md:group-hover/AgentCard:flex"
+                )}
               />
             </div>
           </div>
@@ -124,7 +137,9 @@ export default function AgentCard({ agent }: AgentCardProps) {
         <div className="bg-background-tint-01 p-1 flex flex-row items-end justify-between">
           {/* Left side - creator and actions */}
           <div className="flex flex-col gap-1 py-1 px-2">
-            <IconLabel icon={SvgUser}>{agent.owner?.email || "Onyx"}</IconLabel>
+            {agent.owner?.email && (
+              <IconLabel icon={SvgUser}>{agent.owner.email}</IconLabel>
+            )}
             <IconLabel icon={SvgActions}>
               {agent.tools.length > 0
                 ? `${agent.tools.length} Action${
@@ -140,6 +155,11 @@ export default function AgentCard({ agent }: AgentCardProps) {
               tertiary
               rightIcon={SvgBubbleText}
               onClick={noProp(() => route({ agentId: agent.id }))}
+              className={buildPlausibleClasses("Assistant+Selected", {
+                assistant_id: agent.id,
+                assistant_name: sanitizeForPlausible(agent.name),
+                method: "card_button",
+              })}
             >
               Start Chat
             </Button>
